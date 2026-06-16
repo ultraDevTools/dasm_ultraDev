@@ -1171,9 +1171,9 @@ void findext(char *str)
         ++str;
         Extstr = str;
         switch(str[0]|0x20) {
-	     case 's':
-                Mnext = AM_OTHER_ENDIAN;
-                return;
+        case 's':
+            Mnext = AM_OTHER_ENDIAN;
+            return;
 
         case '0':
         case 'i':
@@ -1190,51 +1190,57 @@ void findext(char *str)
                 break;
             }
             return;
-            case 'd':
+        case 'd':
+        case 'b':
+        case 'z':
+            switch(str[1]|0x20) {
+            case 'x':
+                Mnext = AM_BYTEADRX;
+                break;
+            case 'y':
+                Mnext = AM_BYTEADRY;
+                break;
+            case 'i':
+                Mnext = AM_BITMOD;
+                break;
             case 'b':
-            case 'z':
-                switch(str[1]|0x20) {
-                case 'x':
-                    Mnext = AM_BYTEADRX;
-                    break;
-                case 'y':
-                    Mnext = AM_BYTEADRY;
-                    break;
-                case 'i':
-                    Mnext = AM_BITMOD;
-                    break;
-                case 'b':
-                    Mnext = AM_BITBRAMOD;
-                    break;
-                default:
-                    Mnext = AM_BYTEADR;
-                    break;
-                }
-                return;
-                case 'e':
-                case 'w':
-                case 'a':
-                    switch(str[1]|0x20) {
-                    case 'x':
-                        Mnext = AM_WORDADRX;
-                        break;
-                    case 'y':
-                        Mnext = AM_WORDADRY;
-                        break;
-                    default:
-                        Mnext = AM_WORDADR;
-                        break;
-                    }
-                    return;
-                    case 'l':
-                        Mnext = AM_LONG;
-                        return;
-                    case 'r':
-                        Mnext = AM_REL;
-                        return;
-                    case 'u':
-                        Mnext = AM_BSS;
-                        return;
+                Mnext = AM_BITBRAMOD;
+                break;
+            default:
+                Mnext = AM_BYTEADR;
+                break;
+            }
+            return;
+        case 'e':
+        case 'w':
+        case 'a':
+            switch(str[1]|0x20) {
+            case 'x':
+                Mnext = AM_WORDADRX;
+                break;
+            case 'y':
+                Mnext = AM_WORDADRY;
+                break;
+            default:
+                Mnext = AM_WORDADR;
+                break;
+            }
+            return;
+        case 'l':
+            Mnext = AM_LONG;
+            return;
+/*        case 'w':
+            Mnext = AM_WORD;
+            return;
+        case 'b':
+            Mnext = AM_BYTE;
+            return;*/
+        case 'r':
+            Mnext = AM_REL;
+            return;
+        case 'u':
+            Mnext = AM_BSS;
+            return;
         }
     }
 }
@@ -1530,7 +1536,7 @@ void addhashtable(MNEMONIC *mne)
         memcpy(opcode, mne->opcode, sizeof(mne->opcode));
         for (i = j = 0; i < NUMOC; ++i) {
             mne->opcode[i] = 0;     /* not really needed */
-            if (mne->okmask & (1L << i))
+            if (mne->okmask & (UINT64_C(1) << i))
                 mne->opcode[i] = opcode[j++];
         }
         i = hash1(mne->name);

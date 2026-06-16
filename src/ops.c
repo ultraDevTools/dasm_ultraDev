@@ -41,6 +41,7 @@ extern MNEMONIC    Mne68705[];
 extern MNEMONIC    Mne68HC11[];
 extern MNEMONIC    MneF8[];
 extern MNEMONIC    Mne68908[];
+extern MNEMONIC    Mne65ud32[];
 
 void generate(void);
 void genfill(long fill, long bytes, int size);
@@ -130,6 +131,15 @@ void v_processor(char *str, MNEMONIC *dummy)
        Processor = 68908;
     }
 
+    if (strcmp(str,"65ud32") == 0 || strcmp(str, "65UD32") == 0)
+    {
+        if ( !bCalled )
+            addhashtable(Mne65ud32);
+
+        MsbOrder = 0;       /*  lsb,msb */
+        Processor = 65032;
+    }
+
     bCalled = true;
 
     if ( !Processor )
@@ -144,7 +154,7 @@ void v_processor(char *str, MNEMONIC *dummy)
 
 }
 
-#define badcode(mne,adrmode)  (!(mne->okmask & (1L << adrmode)))
+#define badcode(mne,adrmode)  (!(mne->okmask & (UINT64_C(1) << adrmode)))
 
 extern int pass;
 extern int nMaxPasses;
@@ -159,6 +169,7 @@ void v_mnemonic(char *str, MNEMONIC *mne)
     int     opsize;
     bool	byteRequested;
     char sBuffer[128];
+    MNEMONIC *origmne = mne;
 
     Csegment->flags |= SF_REF;
     programlabel();
@@ -197,6 +208,74 @@ void v_mnemonic(char *str, MNEMONIC *mne)
     else
         opsize = (sym->value) ? 1 : 0;
 
+    /* resolve .b/.w/.l suffix routing before any badcode checks (65ud32 only) */
+    if (Processor == 65032) {
+//			printf("in %d\n", sym->addrmode);
+//			printf("in %d\n", Mnext);
+			if (Mnext == AM_BYTE)
+			{
+				switch (sym->addrmode)
+				{
+				case AM_IMM8:
+					Mnext = AM_IMM8;
+					break;
+				case AM_REGX:
+					Mnext = AM_REGXB;
+					break;
+				case AM_REGUX:
+					Mnext = AM_REGUXB;
+					break;
+				case AM_REGY:
+					Mnext = AM_REGYB;
+					break;
+				case AM_REGUY:
+					Mnext = AM_REGUYB;
+					break;
+				default:
+					break;
+				}
+        }
+        if (Mnext == AM_LONG) {
+            switch (sym->addrmode) {
+            case AM_IMP:    Mnext = AM_IMP_L;  break;
+            case AM_IMM8:   Mnext = AM_IMM32;  break;
+            case AM_REGX:   Mnext = AM_REGXL;  break;
+            case AM_REGUX:  Mnext = AM_REGUXL; break;
+            case AM_REGY:   Mnext = AM_REGYL;  break;
+            case AM_REGUY:  Mnext = AM_REGUYL; break;
+            /* eval() always returns AM_BYTEADR for plain addresses; opsize (computed above)
+               tells the true size: opsize==1 → byte addr, opsize==2 → word addr.
+               When AM_L_FROM_BYTEADR is added, use:
+                 Mnext = (opsize > 1) ? AM_L_FROM_WORDADR : AM_L_FROM_BYTEADR;
+               Note: forward refs have SYM_UNKNOWN → opsize==2 on pass 1 (worst-case),
+               corrected in later passes once the symbol value is known. */
+            case AM_BYTEADR:
+            case AM_WORDADR:Mnext = AM_L_FROM_WORDADR; break;
+            default: break;
+            }
+        }
+        if (Mnext == AM_WORD) {
+            switch (sym->addrmode) {
+            case AM_IMP:    Mnext = AM_IMP_W;  break;
+            case AM_IMM8:   Mnext = AM_IMM16;  break;
+            case AM_REGX:   Mnext = AM_REGXW;  break;
+            case AM_REGUX:  Mnext = AM_REGUXW; break;
+            case AM_REGY:   Mnext = AM_REGYW;  break;
+            case AM_REGUY:  Mnext = AM_REGUYW; break;
+            /* eval() always returns AM_BYTEADR for plain addresses; opsize tells the true size.
+               When AM_W_FROM_BYTEADR is added, use:
+                 Mnext = (opsize > 1) ? AM_W_FROM_WORDADR : AM_W_FROM_BYTEADR; */
+            case AM_BYTEADR:
+            case AM_WORDADR:Mnext = AM_W_FROM_WORDADR; break;
+            default: break;
+            }
+        }
+//		printf("out %d\n", sym->addrmode);
+//		printf("out %d\n", Mnext);
+    }
+    if (Mnext >= 0 && Mnext < NUMOC)
+        addrmode = Mnext;
+
     while (badcode(mne,addrmode) && Cvt[addrmode])
         addrmode = Cvt[addrmode];
 
@@ -207,6 +286,22 @@ void v_mnemonic(char *str, MNEMONIC *mne)
 
     if ( bTrace )
         printf("mnemask: %08lx adrmode: %d  Cvt[am]: %d   Mnext:%d   value: %ld\n", mne->okmask, addrmode, Cvt[addrmode], Mnext,  sym->value);
+
+    /* walk hash chain for other same-name entries with a matching addrmode */
+    if (badcode(mne,addrmode)) {
+        MNEMONIC *alt;
+        for (alt = mne->next; alt != NULL; alt = alt->next) {
+            if (strcmp(alt->name, mne->name) != 0) continue;
+            int trymode = addrmode;
+            while (badcode(alt,trymode) && Cvt[trymode])
+                trymode = Cvt[trymode];
+            if (!badcode(alt,trymode)) {
+                mne = alt;
+                addrmode = trymode;
+                break;
+            }
+        }
+    }
 
     if (badcode(mne,addrmode))
     {
@@ -223,7 +318,6 @@ void v_mnemonic(char *str, MNEMONIC *mne)
             }
         return;
     }
-
 
     if (Mnext >= 0 && Mnext < NUMOC)            /*	Force	*/
     {
@@ -273,8 +367,25 @@ void v_mnemonic(char *str, MNEMONIC *mne)
                 if ((Mnext == AM_BYTEADR) || (Mnext == AM_BYTEADRX))
                 	addrmode = AM_BYTEADRX;
         		break;
+
+        	case AM_REGX:
+        	case AM_REGUX:
+        	case AM_REGY:
+        	case AM_REGUY:
+        		break;  /* addrmode already set to typed variant (AM_REGxB/W/L) by routing above */
         }
 
+        /* walk hash chain for other same-name entries supporting forced addrmode */
+        if (badcode(mne,addrmode)) {
+            MNEMONIC *alt;
+            for (alt = origmne; alt != NULL; alt = alt->next) {
+                if (strcmp(alt->name, mne->name) != 0) continue;
+                if (!badcode(alt,addrmode)) {
+                    mne = alt;
+                    break;
+                }
+            }
+        }
 
         if (badcode(mne,addrmode))
         {
@@ -433,6 +544,24 @@ void v_mnemonic(char *str, MNEMONIC *mne)
         break;
 
     case AM_REL:
+        break;
+
+    case AM_IMM32:
+        if (MsbOrder)
+        {
+            Gen[opidx++] = (sym->value >> 24) & 0xFF;
+            Gen[opidx++] = (sym->value >> 16) & 0xFF;
+            Gen[opidx++] = (sym->value >> 8)  & 0xFF;
+            Gen[opidx++] = sym->value & 0xFF;
+        }
+        else
+        {
+            Gen[opidx++] = sym->value & 0xFF;
+            Gen[opidx++] = (sym->value >> 8)  & 0xFF;
+            Gen[opidx++] = (sym->value >> 16) & 0xFF;
+            Gen[opidx++] = (sym->value >> 24) & 0xFF;
+        }
+        sym = sym->next;
         break;
 
     default:

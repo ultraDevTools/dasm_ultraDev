@@ -88,9 +88,100 @@ unsigned char	 Fisclear;
 unsigned long	 Plab, Pflags;
 
 /*unsigned int	Adrbytes[]  = { 1, 2, 3, 2, 2, 2, 3, 3, 3, 2, 2, 2, 3, 1, 1, 2, 3 };*/
-/*                              1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22*/
-unsigned int    Cvt[]       = { 0, 2, 0, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0, 2, 0, 4, 5, 0, 0, 0, 0 };
-unsigned int    Opsize[]    = { 0, 1, 2, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 0, 0, 1, 1, 1, 2 };
+/* fallback addressing mode: if a mnemonic doesn't support the current mode,
+   retry with Cvt[addrmode]. 0 = no fallback. */
+unsigned int Cvt[] = {
+    /* AM_IMP        = 0  */  0,          /* implied — no fallback */
+    /* AM_IMM8       = 1  */  AM_IMM16,   /* 8-bit immediate ? try 16-bit */
+    /* AM_IMM16      = 2  */  AM_IMM32,   /* 16-bit immediate ? try 32-bit */
+    /* AM_BYTEADR    = 3  */  AM_WORDADR, /* zero-page ? try absolute */
+    /* AM_BYTEADRX   = 4  */  AM_WORDADRX,/* zero-page,X ? try absolute,X */
+    /* AM_BYTEADRY   = 5  */  AM_WORDADRY,/* zero-page,Y ? try absolute,Y */
+    /* AM_WORDADR    = 6  */  AM_REL,     /* absolute ? try relative (for branch targets) */
+    /* AM_WORDADRX   = 7  */  0,          /* absolute,X — no fallback */
+    /* AM_WORDADRY   = 8  */  0,          /* absolute,Y — no fallback */
+    /* AM_REL        = 9  */  0,          /* relative — no fallback */
+    /* AM_BYTEREL    = 10 */  0,          /* 8-bit relative — no fallback */
+    /* AM_INDBYTEX   = 11 */  0,          /* (indirect,X) — no fallback */
+    /* AM_INDBYTEY   = 12 */  0,          /* (indirect),Y — no fallback */
+    /* AM_INDWORD    = 13 */  0,          /* indirect absolute — no fallback */
+    /* AM_INDWORDX   = 14 */  AM_IMM16,   /* indirect absolute,X ? try 16-bit imm */
+    /* AM_INDBYTE    = 15 */  0,          /* indirect 8-bit — no fallback */
+    /* AM_0X         = 16 */  AM_BYTEADRX,/* index X 0-bit ? try zero-page,X */
+    /* AM_0Y         = 17 */  AM_BYTEADRY,/* index Y 0-bit ? try zero-page,Y */
+    /* AM_BITMOD     = 18 */  0,          /* bit modification — no fallback */
+    /* AM_BITBRAMOD  = 19 */  0,          /* bit-test+branch — no fallback */
+    /* AM_BYTEADR_SP = 20 */  0,          /* SP+8-bit — no fallback */
+    /* AM_WORDADR_SP = 21 */  0,          /* SP+16-bit — no fallback */
+    /* AM_IMM32      = 22 */  0,          /* 32-bit immediate — no fallback */
+    /* AM_REGX       = 23 */  0,          /* register X — no fallback */
+    /* AM_REGUX      = 24 */  0,          /* register upper-X — no fallback */
+    /* AM_REGY       = 25 */  0,          /* register Y — no fallback */
+    /* AM_REGUY      = 26 */  0,          /* register upper-Y — no fallback */
+    /* AM_REGXB      = 27 */  0,          /* register X byte — no fallback */
+    /* AM_REGUXB     = 28 */  0,          /* register upper-X byte — no fallback */
+    /* AM_REGYB      = 29 */  0,          /* register Y byte — no fallback */
+    /* AM_REGUYB     = 30 */  0,          /* register upper-Y byte — no fallback */
+    /* AM_REGXW      = 31 */  0,          /* register X word — no fallback */
+    /* AM_REGUXW     = 32 */  0,          /* register upper-X word — no fallback */
+    /* AM_REGYW      = 33 */  0,          /* register Y word — no fallback */
+    /* AM_REGUYW     = 34 */  0,          /* register upper-Y word — no fallback */
+    /* AM_REGXL      = 35 */  0,          /* register X long — no fallback */
+    /* AM_REGUXL     = 36 */  0,          /* register upper-X long — no fallback */
+    /* AM_REGYL      = 37 */  0,          /* register Y long — no fallback */
+    /* AM_REGUYL          = 38 */  0,          /* register upper-Y long — no fallback */
+    /* AM_W_FROM_WORDADR  = 39 */  0,          /* get word from word adr — no fallback */
+    /* AM_L_FROM_WORDADR  = 40 */  0,          /* get long from word adr — no fallback */
+    /* AM_IMP_L           = 41 */  0,          /* implied.l — no fallback */
+    /* AM_IMP_W           = 42 */  0,          /* implied.w — no fallback */
+};
+
+/* number of operand bytes per addressing mode (not counting the opcode itself) */
+unsigned int Opsize[] = {
+    /* AM_IMP        = 0  */  0,  /* implied — no operand */
+    /* AM_IMM8       = 1  */  1,  /* immediate 8-bit  — 1 operand byte  */
+    /* AM_IMM16      = 2  */  2,  /* immediate 16-bit — 2 operand bytes */
+    /* AM_BYTEADR    = 3  */  1,  /* zero-page / 8-bit address */
+    /* AM_BYTEADRX   = 4  */  1,  /* zero-page,X */
+    /* AM_BYTEADRY   = 5  */  1,  /* zero-page,Y */
+    /* AM_WORDADR    = 6  */  2,  /* absolute 16-bit address */
+    /* AM_WORDADRX   = 7  */  2,  /* absolute,X */
+    /* AM_WORDADRY   = 8  */  2,  /* absolute,Y */
+    /* AM_REL        = 9  */  2,  /* relative branch (handled separately) */
+    /* AM_BYTEREL    = 10 */  1,  /* 8-bit relative */
+    /* AM_INDBYTEX   = 11 */  1,  /* (indirect,X) */
+    /* AM_INDBYTEY   = 12 */  1,  /* (indirect),Y */
+    /* AM_INDWORD    = 13 */  2,  /* indirect absolute */
+    /* AM_INDWORDX   = 14 */  2,  /* indirect absolute,X */
+    /* AM_INDBYTE    = 15 */  1,  /* indirect 8-bit */
+    /* AM_0X         = 16 */  0,  /* index X, 0-bit offset */
+    /* AM_0Y         = 17 */  0,  /* index Y, 0-bit offset */
+    /* AM_BITMOD     = 18 */  1,  /* bit modification */
+    /* AM_BITBRAMOD  = 19 */  1,  /* bit-test + relative branch */
+    /* AM_BYTEADR_SP = 20 */  1,  /* SP + 8-bit offset */
+    /* AM_WORDADR_SP = 21 */  2,  /* SP + 16-bit offset */
+    /* AM_IMM32      = 22 */  4,  /* immediate 32-bit — 4 operand bytes */
+    /* AM_REGX       = 23 */  0,  /* register X as direct address */
+    /* AM_REGUX      = 24 */  0,  /* register upper-X as direct address */
+    /* AM_REGY       = 25 */  0,  /* register Y as direct address */
+    /* AM_REGUY      = 26 */  0,  /* register upper-Y as direct address */
+    /* AM_REGXB      = 27 */  0,  /* register X byte — 1 operand byte */
+    /* AM_REGUXB     = 28 */  0,  /* register upper-X byte — 1 operand byte */
+    /* AM_REGYB      = 29 */  0,  /* register Y byte — 1 operand byte */
+    /* AM_REGUYB     = 30 */  0,  /* register upper-Y byte — 1 operand byte */
+    /* AM_REGXW      = 31 */  0,  /* register X word — 2 operand bytes */
+    /* AM_REGUXW     = 32 */  0,  /* register upper-X word — 2 operand bytes */
+    /* AM_REGYW      = 33 */  0,  /* register Y word — 2 operand bytes */
+    /* AM_REGUYW     = 34 */  0,  /* register upper-Y word — 2 operand bytes */
+    /* AM_REGXL      = 35 */  0,  /* register X long — 4 operand bytes */
+    /* AM_REGUXL     = 36 */  0,  /* register upper-X long — 4 operand bytes */
+    /* AM_REGYL      = 37 */  0,  /* register Y long — 4 operand bytes */
+    /* AM_REGUYL          = 38 */  0,  /* register upper-Y long — 4 operand bytes */
+    /* AM_W_FROM_WORDADR  = 39 */  2,  /* get word from word adr — 2 operand bytes */
+    /* AM_L_FROM_WORDADR  = 40 */  2,  /* get long from word adr — 2 operand bytes */
+    /* AM_IMP_L           = 41 */  0,  /* implied.l — no operand */
+    /* AM_IMP_W           = 42 */  0,  /* implied.w — no operand */
+};
 
 MNEMONIC Ops[] = {
     { NULL, v_list    , "list",           0,      0, {0,} },

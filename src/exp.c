@@ -552,6 +552,29 @@ SYMBOL *eval(const char *str, int wantmode)
             break;
 
         default:
+            /* 65ud32: standalone x, ux, y, uy are register-direct addressing modes */
+            if (wantmode && Processor == 65032) {
+                if (((str[0]|0x20) == 'x') && !IsAlphaNum(str[1])) {
+                    cur->addrmode = AM_REGX;
+                    ++str;
+                    break;
+                }
+                if (((str[0]|0x20) == 'y') && !IsAlphaNum(str[1])) {
+                    cur->addrmode = AM_REGY;
+                    ++str;
+                    break;
+                }
+                if (((str[0]|0x20) == 'u') && ((str[1]|0x20) == 'x') && !IsAlphaNum(str[2])) {
+                    cur->addrmode = AM_REGUX;
+                    str += 2;
+                    break;
+                }
+                if (((str[0]|0x20) == 'u') && ((str[1]|0x20) == 'y') && !IsAlphaNum(str[2])) {
+                    cur->addrmode = AM_REGUY;
+                    str += 2;
+                    break;
+                }
+            }
             {
                 const char *dol = str;
                 while (*dol >= '0' && *dol <= '9')

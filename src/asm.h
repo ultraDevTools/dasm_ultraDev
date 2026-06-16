@@ -174,7 +174,7 @@ typedef struct ERRORSTRUCT
 #define MAXMACLEVEL 32
 #define TAB        9
 
-    /* 
+    /*
      * See the file globals.c for what these correspond to (Cvt[] and Opsize[])
      */
     enum ADDRESS_MODES {
@@ -200,11 +200,36 @@ typedef struct ERRORSTRUCT
         AM_BITBRAMOD,           /*    20- spec. bit-test rel. branch    */
         AM_BYTEADR_SP,          /*    21- index SP +8 bits     */
         AM_WORDADR_SP,          /*    22- index SP +16 bits   */
+        AM_IMM32,               /*    23- immediate 32 bits   */
+        AM_REGX,                /*    24- register X as direct address (65ud32) */
+        AM_REGUX,               /*    25- register upper-X as direct address (65ud32) */
+        AM_REGY,                /*    26- register Y as direct address (65ud32) */
+        AM_REGUY,               /*    27- register upper-Y as direct address (65ud32) */
 
+        AM_REGXB,               /*    28- register X as direct address (65ud32) -> byte */
+        AM_REGUXB,              /*    29- register upper-X as direct address (65ud32) -> byte */
+        AM_REGYB,               /*    30- register Y as direct address (65ud32) -> byte */
+        AM_REGUYB,              /*    31- register upper-Y as direct address (65ud32) -> byte */
+
+        AM_REGXW,               /*    32- register X as direct address (65ud32) -> word */
+        AM_REGUXW,              /*    33- register upper-X as direct address (65ud32) -> word */
+        AM_REGYW,               /*    34- register Y as direct address (65ud32) -> word */
+        AM_REGUYW,              /*    35- register upper-Y as direct address (65ud32) -> word */
+
+        AM_REGXL,               /*    36- register X as direct address (65ud32) -> long */
+        AM_REGUXL,              /*    37- register upper-X as direct address (65ud32) -> long */
+        AM_REGYL,               /*    38- register Y as direct address (65ud32) -> long */
+        AM_REGUYL,              /*    39- register upper-Y as direct address (65ud32) -> long */
+        AM_W_FROM_WORDADR,      /*    40- get word from word adr  */
+        AM_L_FROM_WORDADR,      /*    41- get word from word adr  */
+        AM_IMP_L,               /*    42 - implied.l         */
+        AM_IMP_W,               /*    43 - implied.w         */
 
         AM_SYMBOL,
         AM_EXPLIST,
         AM_LONG,
+        AM_WORD,
+        AM_BYTE,
         AM_BSS,
 
         AM_OTHER_ENDIAN,                /* force little endian to DC on big endian machines and the other way round */
@@ -212,28 +237,53 @@ typedef struct ERRORSTRUCT
         NUMOC
     };
 
-#define AF_IMP                  ( 1L << AM_IMP )
-#define AF_IMM8                 ( 1L << AM_IMM8 )
-#define AF_IMM16                ( 1L << AM_IMM16 )
-#define AF_BYTEADR              ( 1L << AM_BYTEADR )
-#define AF_BYTEADRX             ( 1L << AM_BYTEADRX )
-#define AF_BYTEADRY             ( 1L << AM_BYTEADRY )
-#define AF_WORDADR              ( 1L << AM_WORDADR )
-#define AF_WORDADRX             ( 1L << AM_WORDADRX )
-#define AF_WORDADRY             ( 1L << AM_WORDADRY )
-#define AF_REL                  ( 1L << AM_REL )
-#define AF_BYTEREL              ( 1L << AM_BYTEREL )
-#define AF_INDBYTEX             ( 1L << AM_INDBYTEX )
-#define AF_INDBYTEY             ( 1L << AM_INDBYTEY )
-#define AF_INDWORD              ( 1L << AM_INDWORD )
-#define AF_INDWORDX             ( 1L << AM_INDWORDX )
-#define AF_INDBYTE              ( 1L << AM_INDBYTE )
-#define AF_0X                   ( 1L << AM_0X )
-#define AF_0Y                   ( 1L << AM_0Y )
-#define AF_BITMOD               ( 1L << AM_BITMOD )
-#define AF_BITBRAMOD            ( 1L << AM_BITBRAMOD )
-#define AF_BYTEADR_SP           ( 1L << AM_BYTEADR_SP )
-#define AF_WORDADR_SP           ( 1L << AM_WORDADR_SP )
+#define AF_IMP                  ( UINT64_C(1) << AM_IMP )
+#define AF_IMM8                 ( UINT64_C(1) << AM_IMM8 )
+#define AF_IMM16                ( UINT64_C(1) << AM_IMM16 )
+#define AF_BYTEADR              ( UINT64_C(1) << AM_BYTEADR )
+#define AF_BYTEADRX             ( UINT64_C(1) << AM_BYTEADRX )
+#define AF_BYTEADRY             ( UINT64_C(1) << AM_BYTEADRY )
+#define AF_WORDADR              ( UINT64_C(1) << AM_WORDADR )
+#define AF_WORDADRX             ( UINT64_C(1) << AM_WORDADRX )
+#define AF_WORDADRY             ( UINT64_C(1) << AM_WORDADRY )
+#define AF_REL                  ( UINT64_C(1) << AM_REL )
+#define AF_BYTEREL              ( UINT64_C(1) << AM_BYTEREL )
+#define AF_INDBYTEX             ( UINT64_C(1) << AM_INDBYTEX )
+#define AF_INDBYTEY             ( UINT64_C(1) << AM_INDBYTEY )
+#define AF_INDWORD              ( UINT64_C(1) << AM_INDWORD )
+#define AF_INDWORDX             ( UINT64_C(1) << AM_INDWORDX )
+#define AF_INDBYTE              ( UINT64_C(1) << AM_INDBYTE )
+#define AF_0X                   ( UINT64_C(1) << AM_0X )
+#define AF_0Y                   ( UINT64_C(1) << AM_0Y )
+#define AF_BITMOD               ( UINT64_C(1) << AM_BITMOD )
+#define AF_BITBRAMOD            ( UINT64_C(1) << AM_BITBRAMOD )
+#define AF_BYTEADR_SP           ( UINT64_C(1) << AM_BYTEADR_SP )
+#define AF_WORDADR_SP           ( UINT64_C(1) << AM_WORDADR_SP )
+#define AF_IMM32                ( UINT64_C(1) << AM_IMM32 )
+#define AF_REGX                 ( UINT64_C(1) << AM_REGX )
+#define AF_REGUX                ( UINT64_C(1) << AM_REGUX )
+#define AF_REGY                 ( UINT64_C(1) << AM_REGY )
+#define AF_REGUY                ( UINT64_C(1) << AM_REGUY )
+
+#define AF_REGXB                ( UINT64_C(1) << AM_REGXB )
+#define AF_REGUXB               ( UINT64_C(1) << AM_REGUXB )
+#define AF_REGYB                ( UINT64_C(1) << AM_REGYB )
+#define AF_REGUYB               ( UINT64_C(1) << AM_REGUYB )
+
+#define AF_REGXW                ( UINT64_C(1) << AM_REGXW )
+#define AF_REGUXW               ( UINT64_C(1) << AM_REGUXW )
+#define AF_REGYW                ( UINT64_C(1) << AM_REGYW )
+#define AF_REGUYW               ( UINT64_C(1) << AM_REGUYW )
+
+#define AF_REGXL                ( UINT64_C(1) << AM_REGXL )
+#define AF_REGUXL               ( UINT64_C(1) << AM_REGUXL )
+#define AF_REGYL                ( UINT64_C(1) << AM_REGYL )
+#define AF_REGUYL               ( UINT64_C(1) << AM_REGUYL )
+
+#define AF_W_FROM_WORDADR       ( UINT64_C(1) << AM_W_FROM_WORDADR )
+#define AF_L_FROM_WORDADR       ( UINT64_C(1) << AM_L_FROM_WORDADR )
+#define AF_IMP_L                ( UINT64_C(1) << AM_IMP_L )
+#define AF_IMP_W                ( UINT64_C(1) << AM_IMP_W )
 
 #define AM_BYTE                 AM_BYTEADR
 #define AM_WORD                 AM_WORDADR
@@ -260,7 +310,7 @@ MNEMONIC {
     void    (*vect)(char *, MNEMONIC *);    /*  dispatch        */
     const char    *name;        /*    actual name    */
     unsigned char   flags;        /*    special flags    */
-    unsigned long   okmask;
+    uint64_t        okmask;
     unsigned int opcode[NUMOC];  /*    hex codes, byte or word (>xFF) opcodes    */
 };
 
