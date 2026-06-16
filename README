@@ -1,6 +1,13 @@
 ============================
-DASM 2.20.15-SNAPSHOT readme
+DASM 3.00.00 readme
 ============================
+
+
+
+    DASM with support for the 65ud32 cpu. This is a fork of the dasm version 2.20.15.
+
+    65ud32 is a 6502 varant with 32 bit instruction. In all there are about 230 new instructions. The cpu is used in the Retro Cartridge Project ultraDev.
+
 
     Welcome to DASM, a versatile macro assembler with support for several
     8-bit microprocessors including MOS 6502 & 6507; Motorola 6803, 68705,

@@ -4,6 +4,15 @@ closely related files (Makefile, test cases) only, this
 is *not* a complete record of every single change ever
 made. Check the GitHub commit history for that. :-)
 
+new in DASM version 3.00.00:
+    * added new processor 65ud32.
+    * the new instructions are using .w and .l size extensions. so the routing behaves for .w a bit different. before lda.w $80 -> lda.w $0080. with the 65ud32 instruction lda.w loads a word intro the accu. if you want the same behavior for as before you need to use lda.a or lda.e. this is of course only active for the 65ud32 processor
+
+    * added folling new adressing modes:AM_IMM32, AM_REGX, AM_REGUX, AM_REGY, AM_REGUY, AM_REGXB, AM_REGUXB, AM_REGYB, AM_REGUYB, AM_REGXW, AM_REGUXW, AM_REGYW, AM_REGUYW, AM_REGXL, AM_REGUXL, AM_REGYL, AM_REGUYL, AM_W_FROM_WORDADR, AM_L_FROM_WORDADR, AM_IMP_L,AM_IMP_W,
+    * because of the massive count of new adressing modes opmask had to be changed to uint64_t
+
+    * disabled Mac build in the docker file. Unfornately the link to  http://www.tarnyko.net/repo/apple-x86-gcc-DEBIAN-AMD64.zip is dead. I'll not supper mac by default. If you want a Mac version you need to compile yourself.
+
 new in DASM version 2.20.14:
 
     * Technical Documentation / User Guide for dasm in PDF format,
